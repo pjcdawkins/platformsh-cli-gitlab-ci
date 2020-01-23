@@ -1,0 +1,44 @@
+stages:
+  - review
+
+variables:
+  # Your Platform.sh project ID.
+  PF_PROJECT_ID: foo
+
+  # Find known host keys for your project's region with ssh-keyscan and add
+  # them here.
+  SSH_KNOWN_HOSTS: |
+    git.eu-4.platform.sh ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDKIClyq/OHY6u+tlG+LXVwdcMsOGNG1UTOYuYrdCx4CBPiHbdZkizhFFDiJD4pTTtISW7zuiKGWiYmqznwDfeZ2jfEH4NjCyhsMqFWgJ/MwIQDZJGZAGMj9QXEJpCIVyb4D7n1VuKlt0W1KLL4C/a0E7tTU9+1bF38lyhO/QvRNNJD1fgYeZse75stVqftNmp6HA2JIvcQolH1afMSyi0c0CgCPL97nC+qYBOCRd+vtGP/5q5GT9KHENlIcmciu7r23NtIo5U2ytqnKtgnDkngpLTWgPXlepr+VIBSfy1XnoC+gW8uJ6TtF6+L1yz4NrsvBqTJfcdG6318xQ7Hnwz5
+    ssh.eu-4.platform.sh ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDKIClyq/OHY6u+tlG+LXVwdcMsOGNG1UTOYuYrdCx4CBPiHbdZkizhFFDiJD4pTTtISW7zuiKGWiYmqznwDfeZ2jfEH4NjCyhsMqFWgJ/MwIQDZJGZAGMj9QXEJpCIVyb4D7n1VuKlt0W1KLL4C/a0E7tTU9+1bF38lyhO/QvRNNJD1fgYeZse75stVqftNmp6HA2JIvcQolH1afMSyi0c0CgCPL97nC+qYBOCRd+vtGP/5q5GT9KHENlIcmciu7r23NtIo5U2ytqnKtgnDkngpLTWgPXlepr+VIBSfy1XnoC+gW8uJ6TtF6+L1yz4NrsvBqTJfcdG6318xQ7Hnwz5
+
+push-platformsh:
+  variables:
+    ALLOW_MASTER: 1
+  stage: review
+  image: "pjcdawkins/platformsh-cli"
+  script:
+    # Install an SSH key pair set via GitLab CI environment variables.
+    - "bash ci-scripts/setup-ssh.sh"
+
+    # Push the branch to a Platform.sh environment.
+    - "bash ci-scripts/push-platform.sh"
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    url: https://console.platform.sh/projects/$PF_PROJECT_ID/$CI_COMMIT_REF_SLUG
+    on_stop: delete-platformsh
+  only:
+    - branches
+
+delete-platformsh:
+  stage: cleanup
+  image: "pjcdawkins/platformsh-cli"
+  script:
+    - "bash ci-scripts/delete-platform.sh"
+  when: manual
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    action: stop
+  only:
+    - branches
+  except:
+    - master
